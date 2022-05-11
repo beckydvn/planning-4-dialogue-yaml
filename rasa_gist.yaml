@@ -1,51 +1,55 @@
+---
 version: "3.1"
 
 # this is what would be sent to rasa
 nlu:
-- intent: greet
-  examples: |
-    - Hey
-    - Hi
-    - hey there
+  - regex: card_number
+    examples: |
+      - \d{16}
 
-- intent: faq/language
-  examples: |
-    - What language do you speak?
-    - Do you only handle english?
+  - lookup: order
+    examples: |
+      - cheese
+      - pepperoni
+      - mushroom
+      - gluten free
+      - hawaiian
 
-- intent: leave
-  examples: |
-    - Goodbye
-    - Bye
-    - That's all
+  - intent: greet
+    examples: |
+      - Hey
+      - Hi
+      - hey there
 
-- intent: share_order
-  examples: |
-    - I want a [cheese](order) pizza
-    - [pepperoni](order) pizza please!
-    - Do you have [mushroom](order) pizza?
+  - intent: leave
+    examples: |
+      - Goodbye
+      - Bye
+      - That's all
 
-- intent: share_location
-  examples: |
-    - I live in [New York City](location).
-    - Do you deliver to [Denver](location)?
-    - I want my pizza to be delivered to [Chicago](location).
+  - intent: share_order
+    examples: |
+      - I want a [cheese](order) pizza
+      - [pepperoni](order) pizza please!
+      - Do you have [mushroom](order) pizza?
 
-- intent: share_payment_method
-  examples: |
-    - I want to pay by [credit card](payment_method).
-    - Can I pay with [debit](payment_method)?
-    - I will pay in [cash](payment_method)
+  - intent: share_location
+    examples: |
+      - I live in [New York City](location).
+      - Do you deliver to [Denver](location)?
+      - I want my pizza to be delivered to [Chicago](location).
 
-- regex: card_number
-  examples: |
-    - \d{16}
+  - intent: share_payment_method
+    examples: |
+      - I want to pay by [credit card](payment_method).
+      - Can I pay with [debit](payment_method)?
+      - I will pay in [cash](payment_method)
 
-- intent: pay
-  examples: |
-    - My credit card number is [0123456789012342](card_number).
-    - This is my account number [3637456789573835](card_number)
-    - Ok, the number on my card is [0586456789456048](card_number).
+  - intent: pay
+    examples: |
+      - My credit card number is [0123456789012342](card_number).
+      - This is my account number [3637456789573835](card_number)
+      - Ok, the number on my card is [0586456789456048](card_number).
     
 # entities to extract from the user
 entities:
@@ -54,11 +58,99 @@ entities:
   - payment_method
   - card_number
 
-# actions that the agent can perform
+# fluents are not entities but are used purely for dialogue flow
+fluents:
+  - started # created by default
+  - goal # created by default
+  - user_initiative # created by default
+
+effects:
+  - 
+
+# each action that the agent can perform is composed of:
+#   a category (optional). this allows for setting restrictions on categories
+#       of actions later
+#   need. these have to occur before the action occurs.
+#       options:
+#           have (bot has extracted this entity already)
+#           maybe_have (bot may have this entity, but needs to clarify)
+#   effects. what the action will do.
+#       options:
+#           add (set a fluent to true)
+#           del (set a fluent to false)
+#           rule out actions (rule out actions from occurring after this one)
+#               can use for:
+#                   list of actions
+#                   category of actions
+#                   exclude all but, followed by a list of actions
+#           forced follow-up
 actions:
+  # OUTCOMES -- should be able to specify "ask for this" and we should assume
+  # that the bot must have initiative to take that action. otherwise, they're
+  # going to have to specify every time and it's going to get tiresome.
+  # setting initiative manually should also be as easy as setting a value to true
+  # or false because it's going to happen every action.
+
+  # different types of actions? worth separating "ask" actions which serve as slot
+  # fills from actions that perform API calls, for example. then we could "template"
+  # actions which prevents the need to have the user specify patterns of the same
+  # type of action over and over again.
+
+  # have a separate section for specifying sample utterances (responses) that the bot
+  # would (or would not) make when performing an action. responses are optional, and
+  # are only passed to the executor, NOT the planner.
+  - ask-for:
+    # ask for the user's location
+    ask-location:
+      # categories can hold across action "types"
+      category: get_info
+      # link to the entity to slot fill, in this case order
+      # we assume that to perform any "ask-for" action, the bot must have
+      # initiative, i.e. (not (user_initiative)). added during parsing
+      entity: location
+      # note that, for "ask-for" types of actions: we automatically add 
+      # and(not(have_{entity} ), not(maybe_have_{entity} ) )
+      # to the precondition when parsing. this allows bot designers to focus on
+      # specifying any non-default preconditions instead of specifying obvious patterns
+      # every time.
+      dialogue: "Where are you located?"
+      effect:
+        one-of:
+          outcome: extracted-location
+            have: location
+          outcome: fallback
+            forced-follow-up: ask-location
+
+      
+
+      
+
+    # ask for the user's order
+    order:
+      category: get_info
+      entity: order
+
+    payment_method:
+      category: get_info
+      entity: 
+
+
+  - custom:
+
+
+      
   # check if what the user requested is available
   - check_order_availability
+    category: get_info
+    need:
+      have:
+        - order
+      
+
+
+    effects:
   # check if the restaurant is currently delivering to that city
   - check_city_delivery
   - process_payment
+  # place order if the payment goes through
   - place_order
