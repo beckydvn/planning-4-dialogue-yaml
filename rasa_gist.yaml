@@ -1,0 +1,64 @@
+version: "3.1"
+
+# this is what would be sent to rasa
+nlu:
+- intent: greet
+  examples: |
+    - Hey
+    - Hi
+    - hey there
+
+- intent: faq/language
+  examples: |
+    - What language do you speak?
+    - Do you only handle english?
+
+- intent: leave
+  examples: |
+    - Goodbye
+    - Bye
+    - That's all
+
+- intent: share_order
+  examples: |
+    - I want a [cheese](order) pizza
+    - [pepperoni](order) pizza please!
+    - Do you have [mushroom](order) pizza?
+
+- intent: share_location
+  examples: |
+    - I live in [New York City](location).
+    - Do you deliver to [Denver](location)?
+    - I want my pizza to be delivered to [Chicago](location).
+
+- intent: share_payment_method
+  examples: |
+    - I want to pay by [credit card](payment_method).
+    - Can I pay with [debit](payment_method)?
+    - I will pay in [cash](payment_method)
+
+- regex: card_number
+  examples: |
+    - \d{16}
+
+- intent: pay
+  examples: |
+    - My credit card number is [0123456789012342](card_number).
+    - This is my account number [3637456789573835](card_number)
+    - Ok, the number on my card is [0586456789456048](card_number).
+    
+# entities to extract from the user
+entities:
+  - order
+  - location
+  - payment_method
+  - card_number
+
+# actions that the agent can perform
+actions:
+  # check if what the user requested is available
+  - check_order_availability
+  # check if the restaurant is currently delivering to that city
+  - check_city_delivery
+  - process_payment
+  - place_order
