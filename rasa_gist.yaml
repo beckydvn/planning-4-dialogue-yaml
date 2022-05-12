@@ -64,8 +64,8 @@ fluents:
   - goal # created by default
   - user_initiative # created by default
 
-effects:
-  - 
+# effects:
+#   - 
 
 # each action that the agent can perform is composed of:
 #   a category (optional). this allows for setting restrictions on categories
@@ -84,6 +84,7 @@ effects:
 #                   category of actions
 #                   exclude all but, followed by a list of actions
 #           forced follow-up
+
 actions:
   # OUTCOMES -- should be able to specify "ask for this" and we should assume
   # that the bot must have initiative to take that action. otherwise, they're
@@ -99,58 +100,63 @@ actions:
   # have a separate section for specifying sample utterances (responses) that the bot
   # would (or would not) make when performing an action. responses are optional, and
   # are only passed to the executor, NOT the planner.
-  - ask-for:
+  ask-for:
     # ask for the user's location
-    ask-location:
+    - name: ask_location
       # categories can hold across action "types"
       category: get_info
       # link to the entity to slot fill, in this case order
       # we assume that to perform any "ask-for" action, the bot must have
       # initiative, i.e. (not (user_initiative)). added during parsing
-      entity: location
+      entities:
+        - location
       # note that, for "ask-for" types of actions: we automatically add 
       # and(not(have_{entity} ), not(maybe_have_{entity} ) )
       # to the precondition when parsing. this allows bot designers to focus on
       # specifying any non-default preconditions instead of specifying obvious patterns
       # every time.
-      dialogue: "Where are you located?"
-      effect:
+      dialogue:
+        ask-dialogue: "Where are you located?"
+        clarify-dialogue: "Are you located in {location}?"
+      effects:
         one-of:
-          outcome: extracted-location
+          - name: extracted-location
             have: location
-          outcome: fallback
+          - name: fallback
             forced-follow-up: ask-location
 
       
 
       
 
-    # ask for the user's order
-    order:
-      category: get_info
-      entity: order
+  #   # ask for the user's order
+  #   order:
+  #     category: get_info
+  #     entity: order
 
-    payment_method:
-      category: get_info
-      entity: 
+  #   payment_method:
+  #     category: get_info
+  #     entity: 
 
 
-  - custom:
+  # - custom:
 
 
       
-  # check if what the user requested is available
-  - check_order_availability
-    category: get_info
-    need:
-      have:
-        - order
+  # # check if what the user requested is available
+  # - check_order_availability
+  #   category: get_info
+  #   need:
+  #     have:
+  #       - order
       
 
 
-    effects:
-  # check if the restaurant is currently delivering to that city
-  - check_city_delivery
-  - process_payment
-  # place order if the payment goes through
-  - place_order
+  #   effects:
+  # # check if the restaurant is currently delivering to that city
+  # - check_city_delivery
+  # - process_payment
+  # # place order if the payment goes through
+  # - place_order
+
+...
