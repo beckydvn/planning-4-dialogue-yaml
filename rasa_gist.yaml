@@ -102,7 +102,7 @@ actions:
   # are only passed to the executor, NOT the planner.
   ask-for:
     # ask for the user's location
-    - name: ask_location
+    - name: ask-location
       # categories can hold across action "types"
       category: get_info
       # link to the entity to slot fill, in this case order
@@ -119,11 +119,16 @@ actions:
         ask-dialogue: "Where are you located?"
         clarify-dialogue: "Are you located in {location}?"
       effects:
-        one-of:
-          - name: extracted-location
-            have: location
-          - name: fallback
-            forced-follow-up: ask-location
+        # can be and or one-of
+        - one-of:
+          # descriptors: have, not, maybe
+          - have: location
+          - forced-follow-up: ask-location
+        # can be and or one-of
+        - one-of:
+          # descriptors: have, not, maybe
+          - have: test1
+        - test3
 
       
 
