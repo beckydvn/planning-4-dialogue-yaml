@@ -1,5 +1,4 @@
 from enum import Enum, auto
-from opcode import HAVE_ARGUMENT
 import yaml
 
 class PDDLKeys(Enum):

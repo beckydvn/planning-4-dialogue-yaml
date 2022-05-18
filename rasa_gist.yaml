@@ -79,13 +79,13 @@ effects:
     type: one-of # can be and or one-of
     outcomes:
       - type: and # received a valid value
-        - have: {entity} 
-        - not:
-          maybe_have: {entity}
+        have: {entity} 
+        not:
+        maybe_have: {entity}
       - forced-follow-up: {parent_action} # need to ask again, still have no idea
       - type: and
-        - maybe_have: location
-        - forced-follow-up: clarify # will run the clarify version of the parent action
+        maybe_have: location
+        forced-follow-up: clarify # will run the clarify version of the parent action
 
 actions:
   # ask-for actions assume:
@@ -101,8 +101,8 @@ actions:
       category: get_info
       entities:
         - location
-      # if clarify-dialogue is specified, then we create a duplicate "clarify"
-      # action, which assumes as a condition that the agent may have the variable
+        # if clarify-dialogue is specified, then we create a duplicate "clarify"
+        # action, which assumes as a condition that the agent may have the variable
       dialogue:
         ask-dialogue: "Where are you located?"
         clarify-dialogue: "Are you located in {location}?"
@@ -115,13 +115,13 @@ actions:
       category: get_info
       entities:
         - order
-     dialogue:
+      dialogue:
         ask-dialogue: "What would you like to order?"
         clarify-dialogue: "Would you like to order {order}?"
       effects:
-        type: and
-          - validate-response: order
-          - forced-follow-up: check-order-availability
+        - type: and
+          validate-response: order
+          forced-follow-up: check-order-availability
 
     # ask for the user's payment method
     ask-payment:
@@ -173,11 +173,11 @@ actions:
         type: one-of
         outcomes:
           - order_available: true # order is in stock
-          - type: and:
-            - order_available: false # order is not in stock
-            - not:
-                have: order
-            - forced-follow-up: ask-order
+          - type: and
+            order_available: false # order is not in stock
+            not:
+              have: order
+            forced-follow-up: ask-order
           - error: 404 # site down
 
     place-order:

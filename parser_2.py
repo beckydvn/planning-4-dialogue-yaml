@@ -1,5 +1,5 @@
-from tkinter import E
 import yaml
+import json
 
 def grab_yaml_actions():
     return yaml.load(open("rasa_gist.yaml", "r"), Loader=yaml.FullLoader).get("actions")
@@ -21,16 +21,19 @@ def parse_outcome(outcome):
         return f"\nand({outcome})"
 
 action_yaml = grab_yaml_actions()
-action_set = {a["name"] for act_type in action_yaml for a in action_yaml[act_type]}
-pddl = ""
-for act_type in action_yaml:
-    for action in action_yaml[act_type]:
-        pddl += "(:action {0}\n\t:effect ".format(action["name"])
-        if "need" in action.keys():
-            for outcome in action["need"]:
-                pddl += parse_outcome(outcome)
-        if "effects" in action.keys():
-            for outcome in action["effects"]:
-                pddl += parse_outcome(outcome)
-        pddl += "\n)"
-print(pddl)
+action_json = json.dumps(action_yaml, indent=4)
+print(action_json)
+
+# action_set = {a["name"] for act_type in action_yaml for a in action_yaml[act_type]}
+# pddl = ""
+# for act_type in action_yaml:
+#     for action in action_yaml[act_type]:
+#         pddl += "(:action {0}\n\t:effect ".format(action["name"])
+#         if "need" in action.keys():
+#             for outcome in action["need"]:
+#                 pddl += parse_outcome(outcome)
+#         if "effects" in action.keys():
+#             for outcome in action["effects"]:
+#                 pddl += parse_outcome(outcome)
+#         pddl += "\n)"
+# print(pddl)
