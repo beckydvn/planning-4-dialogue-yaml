@@ -2,20 +2,38 @@
 version: "3.1"
 name: order-pizza
 
-# this is what would be sent to rasa
-nlu:
-  - regex: card_number
-    examples: |
-      - \d{16}
-
-  - lookup: order
-    examples: |
+# to extract from the user. defines what each variable can hold
+# also defines rasa "lookups" for variables
+context-variables:
+  - user_initiative:
+    type: flag
+    config: false
+  - order:
+    type: enum
+    config:
       - cheese
       - pepperoni
       - mushroom
       - gluten free
       - hawaiian
+    type: spacy_gpe # spacy location extractor
+  - payment_method:
+    type: enum
+    config: 
+      - credit
+      - credit card
+      - debit
+      - debit card
+      - cash
+  - card_number:
+    type: regex
+    config: \d{16}
+  - goal:
+    type: flag
+    config: false
 
+# combine with the context variables above to pass to rasa
+nlu:
   - intent: greet
     examples: |
       - Hey
@@ -51,98 +69,69 @@ nlu:
       - My credit card number is [0123456789012342](card_number).
       - This is my account number [3637456789573835](card_number)
       - Ok, the number on my card is [0586456789456048](card_number).
-    
-# entities to extract from the user
-# TODO: should have types
-context-variables:
-  - user_initiative
-    
-  - order
-  - location
-  - payment_method
-  - card_number
-  - goal
 
-# fluents are not entities but are used purely for dialogue flow
-# this should not be a separate section but instead should be indicated by flags
-# within actions
-fluents:
-  - started # created by default
-  - goal # created by default
-  - user_initiative # created by default
-
-# effects:
-#   - 
+# can set up template effects
+effects:
+  # general validate-response effect created by default
+  validate-response:
+    type: one-of # can be and or one-of
+    outcomes:
+      - type: and
+        - have: {entity} # received a valid value
+      - forced-follow-up: {parent_action} # need to ask again, still have no idea
+      - type: and
+        - maybe_have: location
+        - forced-follow-up: clarify # will run the clarify version of the parent action
 
 # each action that the agent can perform is composed of:
 #   a category (optional). this allows for setting restrictions on categories
-#       of actions later
+#       of actions later, and can hold across action "types."
 #   condition. these have to occur before the action occurs.
 #       options:
 #           have (bot has extracted this entity already)
 #           maybe_have (bot may have this entity, but needs to clarify)
 #   effects. what the action will do.
 #       options:
-#           add (set a fluent to true)
-#           del (set a fluent to false)
+#           update a variable value/status
 #           rule out actions (rule out actions from occurring after this one)
 #               can use for:
 #                   list of actions
 #                   category of actions
 #                   exclude all but, followed by a list of actions
 #           forced follow-up
-
 actions:
-  # OUTCOMES -- should be able to specify "ask for this" and we should assume
-  # that the bot must have initiative to take that action. otherwise, they're
-  # going to have to specify every time and it's going to get tiresome.
-  # setting initiative manually should also be as easy as setting a value to true
-  # or false because it's going to happen every action.
-
   # ask-for actions assume:
   #   conditions:
-  #   - that the agent either does not have or is not sure of a context variable
+  #   - that the agent does not have, or maybe have, the relevant context variable
   #     that it needs to extract from the user
-  #   - the agent has initiative in order to execute.
+  #   - the agent has initiative
   ask-for:
-    # ask for the user's location
-    - name: ask-location
-      # categories can hold across action "types"
+    ask-location:
+      name: ask-location
       category: get_info
-      # link to the entity to slot fill, in this case order
-      # we assume that to perform any "ask-for" action, the bot must have
-      # initiative, i.e. (not (user_initiative)). added during parsing
       entities:
         - location
-      # note that, for "ask-for" types of actions: we automatically add 
-      # and(not(have_{entity} ), not(maybe_have_{entity} ) )
-      # to the precondition when parsing. this allows bot designers to focus on
-      # specifying any non-default preconditions instead of specifying obvious patterns
-      # every time.
+      # if clarify-dialogue is specified, then we create a duplicate "clarify"
+      # action, which assumes as a condition that the agent may have the variable
       dialogue:
         ask-dialogue: "Where are you located?"
         clarify-dialogue: "Are you located in {location}?"
-      
       effects:
-        # can be and or one-of
-        - one-of:
-          # descriptors: have, not, maybe
-          - have: location
-          - forced-follow-up: ask-location
-        # can be and or one-of
-        - one-of:
-          # descriptors: have, not, maybe
-          - have: test1
-        - test3
+        validate-response: location
 
-      
-
-      
-
-  #   # ask for the user's order
-  #   order:
-  #     category: get_info
-  #     entity: order
+    # ask for the user's order
+    ask-order:
+      name: ask-order
+      category: get_info
+      entities:
+        - order
+      # if clarify-dialogue is specified, then we create a duplicate "clarify"
+      # action, which assumes as a condition that the agent may have the variable
+      dialogue:
+        ask-dialogue: "What would you like to order?"
+        clarify-dialogue: "Would you like to order {order}?"
+      effects:
+        validate-response: order
 
   #   payment_method:
   #     category: get_info
