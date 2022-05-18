@@ -7,7 +7,7 @@ name: order-pizza
 context-variables:
   - user_initiative:
     type: flag
-    config: false
+    config: bool
   - order:
     type: enum
     config:
@@ -16,21 +16,23 @@ context-variables:
       - mushroom
       - gluten free
       - hawaiian
+  - order_available:
+    type: flag
+    config: bool
+  - location:
     type: spacy_gpe # spacy location extractor
   - payment_method:
     type: enum
     config: 
       - credit
-      - credit card
       - debit
-      - debit card
       - cash
   - card_number:
     type: regex
     config: \d{16}
   - goal:
     type: flag
-    config: false
+    config: bool
 
 # combine with the context variables above to pass to rasa
 nlu:
@@ -76,35 +78,23 @@ effects:
   validate-response:
     type: one-of # can be and or one-of
     outcomes:
-      - type: and
-        - have: {entity} # received a valid value
+      - type: and # received a valid value
+        - have: {entity} 
+        - not:
+          maybe_have: {entity}
       - forced-follow-up: {parent_action} # need to ask again, still have no idea
       - type: and
         - maybe_have: location
         - forced-follow-up: clarify # will run the clarify version of the parent action
 
-# each action that the agent can perform is composed of:
-#   a category (optional). this allows for setting restrictions on categories
-#       of actions later, and can hold across action "types."
-#   condition. these have to occur before the action occurs.
-#       options:
-#           have (bot has extracted this entity already)
-#           maybe_have (bot may have this entity, but needs to clarify)
-#   effects. what the action will do.
-#       options:
-#           update a variable value/status
-#           rule out actions (rule out actions from occurring after this one)
-#               can use for:
-#                   list of actions
-#                   category of actions
-#                   exclude all but, followed by a list of actions
-#           forced follow-up
 actions:
   # ask-for actions assume:
   #   conditions:
   #   - that the agent does not have, or maybe have, the relevant context variable
   #     that it needs to extract from the user
   #   - the agent has initiative
+  #   effects:
+  #    - usually validate-response, or custom 
   ask-for:
     ask-location:
       name: ask-location
@@ -125,37 +115,85 @@ actions:
       category: get_info
       entities:
         - order
-      # if clarify-dialogue is specified, then we create a duplicate "clarify"
-      # action, which assumes as a condition that the agent may have the variable
-      dialogue:
+     dialogue:
         ask-dialogue: "What would you like to order?"
         clarify-dialogue: "Would you like to order {order}?"
       effects:
-        validate-response: order
+        type: and
+          - validate-response: order
+          - forced-follow-up: check-order-availability
 
-  #   payment_method:
-  #     category: get_info
-  #     entity: 
+    # ask for the user's payment method
+    ask-payment:
+      name: ask-payment-method
+      category: get_info
+      entities:
+        - payment_method
+      dialogue:
+        ask-dialogue: "How would you like to pay?"
+        clarify-dialogue: "Would you like to pay with {payment_method}?"
+      conditions:
+        have: order
+        have: location
+      effects:
+        validate-response: payment_method
 
-
-  # - custom:
-
-
-      
-  # # check if what the user requested is available
-  # - check_order_availability
-  #   category: get_info
-  #   need:
-  #     have:
-  #       - order
-      
-
-
+    # ask for the user's card #
+    ask-card-number:
+      name: ask-card-number
+      category: get_info
+      entities:
+        - card_number
+      dialogue:
+        ask-dialogue: "Enter your card details."
+        clarify-dialogue: "Are these your card details?"
+      conditions:
+        have: payment_method
+        payment_method:
+          or:
+            credit
+            debit
+      effects:
+        validate-response: card_number
+        
+  web:
+  # web actions assume:
+  #   conditions:
+  #   - that the agent has extracted all the entities listed
   #   effects:
-  # # check if the restaurant is currently delivering to that city
-  # - check_city_delivery
-  # - process_payment
-  # # place order if the payment goes through
-  # - place_order
+  #   - custom
+    check-order-availability:
+      name: check-order-availability
+      entities:
+        - order
+        - order_available
+      dialogue: "Checking order availability..."
+      call: pizzasite.com/orders # make the call
+      effects:
+        type: one-of
+        outcomes:
+          - order_available: true # order is in stock
+          - type: and:
+            - order_available: false # order is not in stock
+            - not:
+                have: order
+            - forced-follow-up: ask-order
+          - error: 404 # site down
+
+    place-order:
+      name: place-order
+      entities:
+        - order
+      dialogue: "Making the order..."
+      call: pizzasite.com/orders # make the call
+      conditions:
+        - or:
+          have: card_number
+          payment_method: cash
+      effects:
+        type: one-of
+        outcomes:
+          - success: true # order was made
+          - error: 404 # site down
 
 ...
