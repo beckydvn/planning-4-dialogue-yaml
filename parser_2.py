@@ -1,9 +1,6 @@
 import yaml
 import json
 
-def grab_yaml_actions():
-    return yaml.load(open("rasa_gist.yaml", "r"), Loader=yaml.FullLoader).get("actions")
-
 def parse_outcome(outcome):
     if isinstance(outcome, dict):
         for key, val in outcome.items():
@@ -20,9 +17,10 @@ def parse_outcome(outcome):
     else:
         return f"\nand({outcome})"
 
-action_yaml = grab_yaml_actions()
-action_json = json.dumps(action_yaml, indent=4)
-print(action_json)
+
+yaml = yaml.load(open("rasa_gist.yaml", "r"), Loader=yaml.FullLoader)
+to_json = json.dumps(yaml, indent=4)
+print(to_json)
 
 # action_set = {a["name"] for act_type in action_yaml for a in action_yaml[act_type]}
 # pddl = ""

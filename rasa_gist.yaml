@@ -5,72 +5,122 @@ name: order-pizza
 # to extract from the user. defines what each variable can hold
 # also defines rasa "lookups" for variables
 context-variables:
-  - user_initiative:
-    type: flag
-    config: bool
   - order:
-    type: enum
-    config:
-      - cheese
-      - pepperoni
-      - mushroom
-      - gluten free
-      - hawaiian
+      type: enum
+      config:
+        - cheese:
+            variations:
+            - chz
+            - cheez
+            - mozzarella
+            - fromage
+            - cheesy
+        - pepperoni:
+            variations:
+            - peperoni
+            - meat
+            - sausage
+        - mushroom:
+            variations:
+            - vegetable
+            - veggie
+            - musroom
+            - shroom
+        - gluten free:
+            variations:
+            - healthy
+            - gluten-free
+            - gf
+        - hawaiian:
+            variations:
+            - pineapple
+            - ham and pineapple
+            - sweet
   - order_available:
-    type: flag
-    config: bool
+      type: flag
   - location:
-    type: spacy_gpe # spacy location extractor
+      type: json
+      config:
+        extraction: spacy
+        method: gpe
+        examples:
+        - New York
+        - Denver
+        - Tallahassee
+        - Chicago
+        - Austin
   - payment_method:
-    type: enum
-    config: 
-      - credit
-      - debit
-      - cash
+      type: enum
+      config: 
+        - credit:
+            variations:
+            - crdit
+            - credit card
+            - visa
+            - mastercard
+        - debit:
+            variations: 
+            - dbit
+            - debit card
+            - chequing account
+            - chequing
+            - savings account
+            - savings  
+        - cash:
+            variations:
+            - money
+            - notes
   - card_number:
-    type: regex
-    config: \d{16}
+      type: json
+      config:
+        extraction: regex
+        pattern: \d{16}
   - goal:
-    type: flag
-    config: bool
+      type: flag
 
 # combine with the context variables above to pass to rasa
+# NOTE: deleted the | character which seems to convert the list to a single
+# string (rasa uses this, not sure why though -- it parses much nicer without
+# it).
 nlu:
   - intent: greet
-    examples: |
+    examples:
       - Hey
       - Hi
       - hey there
-
   - intent: leave
-    examples: |
+    examples:
       - Goodbye
       - Bye
       - That's all
-
   - intent: share_order
-    examples: |
-      - I want a [cheese](order) pizza
-      - [pepperoni](order) pizza please!
-      - Do you have [mushroom](order) pizza?
-
+    entities:
+      - order 
+    examples:
+      - I want a $order$ pizza
+      - $order$ pizza please!
+      - Do you have $order$ pizza?
   - intent: share_location
-    examples: |
-      - I live in [New York City](location).
-      - Do you deliver to [Denver](location)?
-      - I want my pizza to be delivered to [Chicago](location).
-
+    entities:
+      - location 
+    examples:
+      - I live in $location$.
+      - Do you deliver to $location$?
+      - I want my pizza to be delivered to $location$.
   - intent: share_payment_method
-    examples: |
-      - I want to pay by [credit card](payment_method).
-      - Can I pay with [debit](payment_method)?
-      - I will pay in [cash](payment_method)
-
+    entities:
+      - payment_method
+    examples:
+      - I want to pay by $payment_method$.
+      - Can I pay with $payment_method$?
+      - I will pay in $payment_method$
   - intent: pay
-    examples: |
-      - My credit card number is [0123456789012342](card_number).
-      - This is my account number [3637456789573835](card_number)
-      - Ok, the number on my card is [0586456789456048](card_number).
+    entities:
+      - card_number
+    examples:
+      - My credit card number is $card_number$.
+      - This is my account number $card_number$
+      - Ok, the number on my card is $card_number$.
 
 # can set up template effects
 effects:
