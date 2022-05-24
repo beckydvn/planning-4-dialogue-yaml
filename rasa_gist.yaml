@@ -6,9 +6,9 @@ name: order-pizza
 # also defines rasa "lookups" for variables
 # types available:
 #   flag
-#       can set to T/F initially with the "setting" attribute
+#       can set to T/F initially
 #   fflag (fuzzy flag -- yes, no, maybe)
-#       can set to T/F/M (maybe) initially with the "setting" attribute
+#       can set to T/F/M (maybe) initially
 #   enum
 #   json
 context-variables:
