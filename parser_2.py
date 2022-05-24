@@ -19,8 +19,7 @@ def parse_outcome(outcome):
 
 
 yaml = yaml.load(open("rasa_gist.yaml", "r"), Loader=yaml.FullLoader)
-to_json = json.dumps(yaml, indent=4)
-print(to_json)
+print(json.dumps(yaml, indent=4))
 
 # action_set = {a["name"] for act_type in action_yaml for a in action_yaml[act_type]}
 # pddl = ""
