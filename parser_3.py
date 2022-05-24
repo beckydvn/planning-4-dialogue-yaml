@@ -29,7 +29,14 @@ for act_type in yaml["actions"]:
         json_config["actions"][act]["type"] = act_type
         for key, val in info.items():
             if key == "condition":
-                val = [[cond_key, cond_val] for cond_key, cond_val in info[key].items()] 
+                conditions = []
+                for cond_key, cond_config in info[key].items():
+                    for cond_config_key, cond_val in cond_config.items():
+                        if cond_config_key in ["known", "config"]:
+                            conditions.append([cond_key, cond_val])
+                        elif cond_config_key == "or":
+                            pass
+                val = conditions
             json_config["actions"][act][key] = val
 
 print(json.dumps(json_config, indent=4))

@@ -267,7 +267,7 @@ actions:
       subtype: dialogue disambiguation 
       message_variants:
         - "How would you like to pay?"
-      conditions:
+      condition:
         order:
           known: true
         location:
@@ -289,7 +289,7 @@ actions:
       message_variants:
         - "Enter your card number."
         - "Please enter your card details."
-      conditions:
+      condition:
         payment_method:
           known: true
           config:
@@ -334,8 +334,8 @@ actions:
       - "Making the order..."
       call:
         endpoint: pizzasite.com/orders # make the call
-      conditions:
-        - or:
+      condition:
+        or:
           card_number:
             known: True
           payment_method:
