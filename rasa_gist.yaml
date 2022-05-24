@@ -4,79 +4,100 @@ name: order-pizza
 
 # to extract from the user. defines what each variable can hold
 # also defines rasa "lookups" for variables
+# types available:
+#   flag
+#       can set to T/F initially with the "setting" attribute
+#   fflag (fuzzy flag -- yes, no, maybe)
+#       can set to T/F/M (maybe) initially with the "setting" attribute
+#   enum
+#   json
 context-variables:
-  - order:
-      type: enum
-      config:
-        - cheese:
-            variations:
-            - chz
-            - cheez
-            - mozzarella
-            - fromage
-            - cheesy
-        - pepperoni:
-            variations:
-            - peperoni
-            - meat
-            - sausage
-        - mushroom:
-            variations:
-            - vegetable
-            - veggie
-            - musroom
-            - shroom
-        - gluten free:
-            variations:
-            - healthy
-            - gluten-free
-            - gf
-        - hawaiian:
-            variations:
-            - pineapple
-            - ham and pineapple
-            - sweet
-  - order_available:
-      type: flag
-  - location:
-      type: json
-      config:
-        extraction: spacy
-        method: gpe
-        examples:
-        - New York
-        - Denver
-        - Tallahassee
-        - Chicago
-        - Austin
-  - payment_method:
-      type: enum
-      config: 
-        - credit:
-            variations:
-            - crdit
-            - credit card
-            - visa
-            - mastercard
-        - debit:
-            variations: 
-            - dbit
-            - debit card
-            - chequing account
-            - chequing
-            - savings account
-            - savings  
-        - cash:
-            variations:
-            - money
-            - notes
-  - card_number:
-      type: json
-      config:
-        extraction: regex
-        pattern: \d{16}
-  - goal:
-      type: flag
+  order:
+    type: enum
+    known:
+      type: fflag
+      config: false
+    config:
+      cheese:
+        variations:
+        - chz
+        - cheez
+        - mozzarella
+        - fromage
+        - cheesy
+      pepperoni:
+        variations:
+        - peperoni
+        - meat
+        - sausage
+      mushroom:
+        variations:
+        - vegetable
+        - veggie
+        - musroom
+        - shroom
+      gluten free:
+        variations:
+        - healthy
+        - gluten-free
+        - gf
+      hawaiian:
+        variations:
+        - pineapple
+        - ham and pineapple
+        - sweet
+  order_available:
+    type: flag
+    config: false
+  location:
+    type: json
+    known: 
+      type: fflag
+      config: false
+    config:
+      extraction: spacy
+      method: gpe
+      examples:
+      - New York
+      - Denver
+      - Tallahassee
+      - Chicago
+      - Austin
+  payment_method:
+    type: enum
+    known: 
+      type: fflag
+      config: false
+    config: 
+      credit:
+        variations:
+        - crdit
+        - credit card
+        - visa
+        - mastercard
+      debit:
+        variations: 
+        - dbit
+        - debit card
+        - chequing account
+        - chequing
+        - savings account
+        - savings  
+      cash:
+        variations:
+        - money
+        - notes
+  card_number:
+    type: json
+    known:
+      type: fflag
+      config: false
+    config:
+      extraction: regex
+      pattern: \d{16}
+  goal:
+    type: flag
+    config: false
 
 # combine with the context variables above to pass to rasa
 # NOTE: deleted the | character which seems to convert the list to a single
@@ -93,8 +114,30 @@ nlu:
       - Goodbye
       - Bye
       - That's all
+      - i'm done
+  - intent: confirm
+    examples:
+      - yes
+      - yeah
+      - that's it
+      - Y
+      - mhm
+      - confirm
+      - yes please
+  - intent: deny
+    examples:
+      - no
+      - not at all
+      - that's not what i meant
+      - absolutely not
+      - i don't want that
+      - nah
+      - no thanks
+      - no thank you
   - intent: share_order
-    entities:
+    # specify entities so we can ensure all examples use exactly these entities
+    # (no more, no less)
+    entities: 
       - order 
     examples:
       - I want a $order$ pizza
@@ -126,124 +169,186 @@ nlu:
 effects:
   # general validate-response effect created by default
   validate-response:
-    type: one-of # can be and or one-of
+    # parameters that the template can take
+    parameters:
+      - entity
+      - valid-intent
+      - invalid-intent
+      - unclear-intent
+      - valid-follow-up
+    type: oneof
     outcomes:
-      - type: and # received a valid value
-        have: {entity} 
-        not:
-        maybe_have: {entity}
-      - forced-follow-up: {parent_action} # need to ask again, still have no idea
-      - type: and
-        maybe_have: location
-        forced-follow-up: clarify # will run the clarify version of the parent action
+      # received a valid value
+      valid:
+        updates:
+          entity:
+            value: $entity$
+            known: true
+        intent: valid-intent
+        follow_up: valid-follow-up
+      # need to ask again, still have no idea
+      invalid:
+        follow_up: parent-action
+        intent: invalid-intent
+      # need to clarify the response
+      unclear:
+        updates:
+          entity:
+            known: Maybe
+        follow_up:
+          clarify: parent-action
+        intent: unclear-intent
+  # general confirm effect created by default
+  confirm-response:
+    parameters:
+      - entity
+    type: oneof
+    outcomes:
+      confirm:
+        updates:
+          entity:
+            value: $entity$
+            known: true
+        intent: confirm
+      deny:
+        updates:
+          entity:
+            value: null
+            known: false
+        intent: deny
 
 actions:
-  # ask-for actions assume:
-  #   conditions:
-  #   - that the agent does not have, or maybe have, the relevant context variable
-  #     that it needs to extract from the user
-  #   - the agent has initiative
-  #   effects:
-  #    - usually validate-response, or custom 
-  ask-for:
+  dialogue:
     ask-location:
-      name: ask-location
-      category: get_info
-      entities:
-        - location
-        # if clarify-dialogue is specified, then we create a duplicate "clarify"
-        # action, which assumes as a condition that the agent may have the variable
-      dialogue:
-        ask-dialogue: "Where are you located?"
-        clarify-dialogue: "Are you located in {location}?"
+      subtype: dialogue disambiguation 
+      message_variants:
+        - "Where are you located?"
+        - "Where do you live?"
+        - "Where would you like to deliver?"
+      condition:
+        location:
+          known: false
       effects:
-        validate-response: location
+        validate-response:
+          entity: location
+          # invalid-intent and unclear-intent would be decided by the executor based on
+          # the extraction results/confidence
+          valid-intent: share_location
+      # if supplied, creates a corresponding "clarify" action during parsing which 
+      # assumes as a condition that the entities have their known attribute set
+      # to maybe and the effect is the default confirm above
+      clarify:
+        entity: location
+        message_variants:
+          - "Are you located in $location$?"
+          - "Do you live in $location$?"
 
     # ask for the user's order
     ask-order:
-      name: ask-order
-      category: get_info
-      entities:
-        - order
-      dialogue:
-        ask-dialogue: "What would you like to order?"
-        clarify-dialogue: "Would you like to order {order}?"
+      subtype: dialogue disambiguation 
+      message_variants:
+        - "What would you like to order?"
+        - "What type of pizza would you like?"
+      condition:
+        order:
+          known: false
       effects:
-        - type: and
-          validate-response: order
-          forced-follow-up: check-order-availability
+        validate-response:
+          entity: order
+          valid-intent: share_order
+          valid-follow-up: check-order-availability
+      clarify:
+        entity: order
+        message_variants:
+          - "Would you like to order $order$?"
 
     # ask for the user's payment method
     ask-payment:
-      name: ask-payment-method
-      category: get_info
-      entities:
-        - payment_method
-      dialogue:
-        ask-dialogue: "How would you like to pay?"
-        clarify-dialogue: "Would you like to pay with {payment_method}?"
+      subtype: dialogue disambiguation 
+      message_variants:
+        - "How would you like to pay?"
       conditions:
-        have: order
-        have: location
-      effects:
-        validate-response: payment_method
-
-    # ask for the user's card #
-    ask-card-number:
-      name: ask-card-number
-      category: get_info
-      entities:
-        - card_number
-      dialogue:
-        ask-dialogue: "Enter your card details."
-        clarify-dialogue: "Are these your card details?"
-      conditions:
-        have: payment_method
+        order:
+          known: true
+        location:
+          known: true
         payment_method:
-          or:
-            credit
-            debit
+          known: false
       effects:
-        validate-response: card_number
-        
-  web:
-  # web actions assume:
-  #   conditions:
-  #   - that the agent has extracted all the entities listed
-  #   effects:
-  #   - custom
+        validate-response:
+          entity: payment_method
+          valid-intent: share_payment_method
+      clarify:
+        entity: order
+        message_variants:
+          - "Would you like to pay with $payment_method$?"
+
+    # ask for the user's card
+    ask-card-number:
+      subtype: dialogue disambiguation 
+      message_variants:
+        - "Enter your card number."
+        - "Please enter your card details."
+      conditions:
+        payment_method:
+          known: true
+          config:
+            - credit
+            - debit
+      effects:
+        validate-response:
+          entity: card_number
+          valid-intent: pay
+
+    # exit due to site being down
+    exit:
+      message_variants:
+        - "Pizza site was unable to make the order. Exiting..."
+
+  api:
     check-order-availability:
-      name: check-order-availability
-      entities:
-        - order
-        - order_available
-      dialogue: "Checking order availability..."
-      call: pizzasite.com/orders # make the call
+      message_variants:
+        - "Checking order availability..."
+      call:
+        endpoint: pizzasite.com/orders 
       effects:
-        type: one-of
+        type: oneof
         outcomes:
-          - order_available: true # order is in stock
-          - type: and
-            order_available: false # order is not in stock
-            not:
-              have: order
-            forced-follow-up: ask-order
-          - error: 404 # site down
+          in-stock:
+            updates:
+              order_available: true
+            # status of the call (helps determine the outcome similar to intent)
+            status: success 
+          out-of-stock:
+            updates:
+              order:
+                known: false
+            follow_up: ask-order
+            status: success
+          site-down:
+            follow_up: exit
+            status: 404
 
     place-order:
-      name: place-order
-      entities:
-        - order
-      dialogue: "Making the order..."
-      call: pizzasite.com/orders # make the call
+      message_variants:
+      - "Making the order..."
+      call:
+        endpoint: pizzasite.com/orders # make the call
       conditions:
         - or:
-          have: card_number
-          payment_method: cash
+          card_number:
+            known: True
+          payment_method:
+            config: cash
       effects:
-        type: one-of
+        type: oneof
         outcomes:
-          - success: true # order was made
-          - error: 404 # site down
+          success:
+            updates:
+              goal: true
+            status: success
+          site-down:
+            follow_up: exit
+            status: 404
 
 ...
