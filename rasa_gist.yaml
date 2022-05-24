@@ -3,7 +3,7 @@ version: "3.1"
 name: order-pizza
 
 # to extract from the user. defines what each variable can hold
-# also defines examples for rasa tp ise
+# also defines examples for rasa to use
 # types available:
 #   flag
 #       can set to T/F initially
