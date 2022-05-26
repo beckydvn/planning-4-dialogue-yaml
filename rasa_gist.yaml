@@ -211,8 +211,8 @@ effects:
           follow_up:
             clarify: parent-action
           intent: unclear-intent
-  # general confirm effect created by default
-  confirm-response:
+  # general yes-no effect created by default
+  yes-no:
     parameters:
       - entity
     oneof:
@@ -244,8 +244,8 @@ actions:
     effects:
       validate-response:
         entity: location
-        # invalid-intent and unclear-intent would be decided by the executor based on
-        # the extraction results/confidence
+        # unclear-intent would be decided by the executor based on the extraction
+        # results/confidence
         valid-intent: share_location
     # if supplied, creates a corresponding "clarify" action during parsing which 
     # assumes as a condition that the entities have their known attribute set
